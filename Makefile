@@ -1,7 +1,9 @@
+CFLAGS = -g -O2 -Wall
+
 all: kvmbox loader
 
 kvmbox: kvmbox.o
-	gcc kvmbox.o  -o kvmbox
+	gcc $(CFLAGS) kvmbox.o  -o kvmbox
 
 kvmbox.o:
 

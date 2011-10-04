@@ -1,3 +1,7 @@
+[bits 32]
+
+	hlt
+
 [bits 16]
 
 start:
@@ -12,7 +16,7 @@ start:
 
 [bits 32]
 protected:
-	jmp 0x8:0x000401bc
+	jmp 0x8:0x000001bc
 
 	db 0x90,0x90,0x90
 align 16
