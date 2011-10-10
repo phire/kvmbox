@@ -12,6 +12,8 @@ uint16_t eepromRead(uint8_t addr) {
 
 uint16_t picRead(uint8_t cmd) {
 	switch(cmd) {
+	case 0x4: // av pack
+		return 0x7; // disconnected
 	// Challange. These are meant to be random, but the what the bios doesn't know can't hurt it.
 	case 0x1c:
 		return 0xde;
