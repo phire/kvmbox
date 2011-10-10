@@ -12,3 +12,34 @@
 0xffc00000             ISA Bridge?
 0xfff00000-0xffffffff  Flash
 
+
+Ports
+0000-001f : dma1
+0020-003f : pic1
+0040-0043 : timer0
+0050-0053 : timer1
+0060-006f : keyboard
+0070-007f : rtc
+0080-008f : dma page reg
+00a0-00bf : pic2
+00c0-00df : dma2
+00f0-00ff : fpu
+01f0-01f7 : ide0
+03c0-03df : vesafb
+03f6-03f6 : ide0
+0cf8-0cff : PCI conf1
+1000-100f : nVidia Corporation nForce PCI System Management
+1080-10ff : nVidia Corporation Intel 537 [nForce MC97 Modem]
+1400-14ff : nVidia Corporation Intel 537 [nForce MC97 Modem]
+c000-c00f : nVidia Corporation nForce PCI System Management
+  c000-c00f : amd756-smbus
+c200-c21f : nVidia Corporation nForce PCI System Management
+d000-d0ff : nVidia Corporation nForce Audio
+  d000-d0ff : NVIDIA nForce Audio
+d200-d27f : nVidia Corporation nForce Audio
+  d200-d23f : NVIDIA nForce Audio
+e000-e007 : nVidia Corporation nForce Ethernet Controller
+  e000-e007 : forcedeth
+ff60-ff6f : nVidia Corporation nForce IDE
+  ff60-ff67 : ide0
+

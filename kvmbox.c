@@ -92,8 +92,11 @@ void mmio_handler(struct kvm *kvm) {
 void io_handler(struct kvm *kvm) {
 	unsigned char *p = (unsigned char *)(kvm->run) + kvm->run->io.data_offset;
 	assert(kvm->run->io.count == 1);
-	if(kvm->run->io.port >= 0xc000 && kvm->run->io.port <= 0xc008) 
-		smbusIO(kvm->run->io.port, kvm->run->io.direction, kvm->run->io.size, p); 
+	uint16_t port = kvm->run->io.port;
+	if(port >= 0xc000 && port <= 0xc008) 
+		smbusIO(port, kvm->run->io.direction, kvm->run->io.size, p); 
+	else if(port == 0xcf8 || port == 0xcfc) 
+		pciConfigIO(port, kvm->run->io.direction, kvm->run->io.size, p);
 	else if(kvm->run->io.direction) {
 		printf("I/O port 0x%04x out ", kvm->run->io.port);
 		switch(kvm->run->io.size) {
