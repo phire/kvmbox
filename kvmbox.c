@@ -8,6 +8,8 @@
 #include <linux/kvm.h>
 #include <malloc.h>
 #include <assert.h>
+#include <stdint.h>
+
 
 /* callback definitions as shown in Listing 2 go here */
 
@@ -38,6 +40,7 @@ struct kvm {
 	int vcpu_fd;
 	struct kvm_run *run;
 	void *ram;
+	void *rom;
 };
 
 void printRegs(struct kvm *kvm) {
@@ -70,15 +73,19 @@ void printRegs(struct kvm *kvm) {
 }
 
 void mmio_handler(struct kvm *kvm) {
+	uint32_t addr = kvm->run->mmio.phys_addr;
+	if(addr > 0xfffc0000 && kvm->run->mmio.len == 4) {
+		*(uint32_t *)(kvm->run->mmio.data) = *(uint32_t *)(kvm->rom + (addr & 0x3ffff));
+	}
 	if(kvm->run->mmio.is_write) {
 		printf("Write %i to 0x%08x\n", kvm->run->mmio.len, kvm->run->mmio.phys_addr);
 		printf("0x%08x\n",*(unsigned int*)kvm->run->mmio.data);
 	} else {
 		printf("Read %i from 0x%08x\n", kvm->run->mmio.len, kvm->run->mmio.phys_addr);
-		kvm->run->mmio.data[0] = 0xc0;
-		kvm->run->mmio.data[1] = 0x0d;
-		kvm->run->mmio.data[2] = 0;
-		kvm->run->mmio.data[3] = 0;
+	//	kvm->run->mmio.data[0] = 0xc0;
+	//	kvm->run->mmio.data[1] = 0x0d;
+	//	kvm->run->mmio.data[2] = 0;
+	//	kvm->run->mmio.data[3] = 0;
 		
 	}
 }
@@ -160,7 +167,7 @@ int main(int argc, char *argv[])
 	}
 	kvm->run = (struct kvm_run*) map;
 
-	kvm->ram = memalign(0x0040000, 0x04000000); // 64mb of 4mb aligned memory
+	kvm->ram = memalign(0x00400000, 0x04000000); // 64mb of 4mb aligned memory
 	struct kvm_userspace_memory_region memory = {
 		.memory_size = 0x04000000,
 		.guest_phys_addr = 0x0,
@@ -177,6 +184,24 @@ int main(int argc, char *argv[])
 
 	load_file(kvm->ram + 0x000f0000, "loader");
     load_file(kvm->ram + 0x00000000, argv[1]);
+
+	kvm->rom = memalign(0x00100000, 0x00100000); //1mb of 1mb aligned
+
+	struct kvm_userspace_memory_region rom = {
+		.memory_size = 0x00100000,
+		.guest_phys_addr = 0xfff00000,
+		.userspace_addr = (unsigned long) kvm->rom,
+		.flags = 0,
+		.slot = 1,
+	};
+	
+	r = ioctl(kvm->vm_fd, KVM_SET_USER_MEMORY_REGION, &rom);
+	if (r == -1) {
+		fprintf(stderr, "create_userspace_phys_mem: %i\n", r);
+		return -1;
+	}
+
+	load_file(kvm->rom, argv[2]);
 
 	((unsigned char*)kvm->ram)[0x6b7] = 0x90;
 	((unsigned char*)kvm->ram)[0x6b8] = 0x90;
