@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <linux/kvm.h>
 #include <malloc.h>
+#include <assert.h>
 
 /* callback definitions as shown in Listing 2 go here */
 
@@ -71,13 +72,22 @@ void printRegs(struct kvm *kvm) {
 void mmio_handler(struct kvm *kvm) {
 	if(kvm->run->mmio.is_write) {
 		printf("Write %i to 0x%08x\n", kvm->run->mmio.len, kvm->run->mmio.phys_addr);
+		printf("0x%08x\n",*(unsigned int*)kvm->run->mmio.data);
 	} else {
 		printf("Read %i from 0x%08x\n", kvm->run->mmio.len, kvm->run->mmio.phys_addr);
+		kvm->run->mmio.data[0] = 0xc0;
+		kvm->run->mmio.data[1] = 0x0d;
+		kvm->run->mmio.data[2] = 0;
+		kvm->run->mmio.data[3] = 0;
+		
 	}
 }
 void io_handler(struct kvm *kvm) {
 	unsigned char *p = (unsigned char *)(kvm->run) + kvm->run->io.data_offset;
-	if(kvm->run->io.direction) {
+	assert(kvm->run->io.count == 1);
+	if(kvm->run->io.port >= 0xc000 && kvm->run->io.port <= 0xc008) 
+		smbusIO(kvm->run->io.port, kvm->run->io.direction, kvm->run->io.size, p); 
+	else if(kvm->run->io.direction) {
 		printf("I/O port 0x%04x out ", kvm->run->io.port);
 		switch(kvm->run->io.size) {
 			case 1:
@@ -92,7 +102,7 @@ void io_handler(struct kvm *kvm) {
 		}
 	} else {
  		printf("I/O 0x%04x in ", kvm->run->io.port);
-		*p = 0x20;
+		//*p = 0x20;
 		switch(kvm->run->io.size) {
 			case 1:
 				printf("byte\n");
@@ -168,7 +178,11 @@ int main(int argc, char *argv[])
 	load_file(kvm->ram + 0x000f0000, "loader");
     load_file(kvm->ram + 0x00000000, argv[1]);
 
-	//((unsigned char*)kvm->ram)[0x40025c] = 0xf4;
+	((unsigned char*)kvm->ram)[0x6b7] = 0x90;
+	((unsigned char*)kvm->ram)[0x6b8] = 0x90;
+	((unsigned char*)kvm->ram)[0x6b9] = 0x90;
+	((unsigned char*)kvm->ram)[0x6ba] = 0x90;
+	((unsigned char*)kvm->ram)[0x6bb] = 0x90;
 
 	while (1) {
 		ioctl(kvm->vcpu_fd, KVM_RUN, 0);
@@ -177,12 +191,21 @@ int main(int argc, char *argv[])
 				io_handler(kvm);
 				break;
 			case KVM_EXIT_HLT:
-				printf("hlt\n");
-				sleep(1);
-				break;
+				printf("halted\n");
+				printRegs(kvm);
+				return -1;
 			case KVM_EXIT_MMIO:
 				mmio_handler(kvm);
+				printRegs(kvm);
 				break;
+			case KVM_EXIT_SHUTDOWN:
+				printRegs(kvm);
+				printf("Triple fault\n");
+				return -1;
+			case KVM_EXIT_FAIL_ENTRY:
+				printRegs(kvm);
+				printf("Failed to enter emulation: %x\n", kvm->run->fail_entry.hardware_entry_failure_reason);
+				return -1;
 			default:
 				printf("unhandled exit reason: %i\n", kvm->run->exit_reason);
 				printRegs(kvm);
