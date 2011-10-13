@@ -202,7 +202,6 @@ struct pci_config vga = {
 };
 
 struct pci_config *getConfig() {
-	struct pci_config *config;
 	switch(bus << 16 | device << 11 | function << 8) {
 	case 9 << 11:
 		return &ideController;
@@ -221,7 +220,6 @@ struct pci_config *getConfig() {
 	default:
 		return 0;
 	}
-	return ((uint32_t *)config)[reg];
 }
 
 uint32_t readConfig(reg) {
@@ -233,11 +231,11 @@ uint32_t readConfig(reg) {
 	return ((uint32_t *)config)[reg];
 }
 
-uint32_t writeConfig(reg, value) {
+void writeConfig(reg, value) {
 	struct pci_config *config = getConfig();
 	if (!config) {
 		printf("Unimplemented PCI device write %i:%i:%i[0x%02x] = %08x\n", bus, device, function, reg, value);
-		return 0;
+		return;
 	}
 	((uint32_t *)config)[reg] = value;
 }

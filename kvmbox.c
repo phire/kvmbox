@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <signal.h>
+#include <stropts.h>
 
 /* callback definitions as shown in Listing 2 go here */
 
@@ -79,21 +80,17 @@ void printRegs(struct kvm *kvm) {
 
 void mmio_handler(struct kvm *kvm) {
 	uint32_t addr = kvm->run->mmio.phys_addr;
-	if(addr > 0xfffc0000 && kvm->run->mmio.len == 4) {
-		*(uint32_t *)(kvm->run->mmio.data) = *(uint32_t *)(kvm->rom + (addr & 0x3ffff));
-	}
 	if(kvm->run->mmio.is_write) {
-		printf("Write %i to 0x%08x\n", kvm->run->mmio.len, kvm->run->mmio.phys_addr);
-		printf("0x%08x\n",*(unsigned int*)kvm->run->mmio.data);
+		printf("Write %i to 0x%08x\n", kvm->run->mmio.len, addr);
+		printf("0x%08x\n",*(unsigned int*)(kvm->run->mmio.data));
 	} else {
-		printf("Read %i from 0x%08x\n", kvm->run->mmio.len, kvm->run->mmio.phys_addr);
-	//	kvm->run->mmio.data[0] = 0xc0;
-	//	kvm->run->mmio.data[1] = 0x0d;
-	//	kvm->run->mmio.data[2] = 0;
-	//	kvm->run->mmio.data[3] = 0;
-		
+		printf("Read %i from 0x%08x\n", kvm->run->mmio.len, addr);
 	}
 }
+
+void smbusIO(uint16_t, uint8_t, uint8_t, uint8_t*);
+void pciConfigIO(uint16_t, uint8_t, uint8_t, uint8_t*);
+
 void io_handler(struct kvm *kvm) {
 	unsigned char *p = (unsigned char *)(kvm->run) + kvm->run->io.data_offset;
 	assert(kvm->run->io.count == 1);
@@ -177,7 +174,7 @@ int vcpu_run(struct kvm *kvm) {
 				printf("Triple fault\n");
 				return -1;
 			case KVM_EXIT_FAIL_ENTRY:
-				printf("Failed to enter emulation: %x\n", kvm->run->fail_entry.hardware_entry_failure_reason);
+				printf("Failed to enter emulation: %llx\n", kvm->run->fail_entry.hardware_entry_failure_reason);
 				return -1;
 			default:
 				printf("unhandled exit reason: %i\n", kvm->run->exit_reason);
