@@ -10,3 +10,6 @@ loader: loader.asm
 
 clean:
 	rm *.o kvmbox
+
+run: kvmbox
+	./kvmbox BIOSs/mine/2bl.img BIOSs/mine/bios.bin
