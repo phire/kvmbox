@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <signal.h>
 #include <stropts.h>
+#include <pthread.h>
 
 /* callback definitions as shown in Listing 2 go here */
 
@@ -260,11 +261,16 @@ struct kvm *vm_init(int argc, char *argv[]) {
 
 int main(int argc, char *argv[])
 {
+	int r;
 	signal(SIGUSR1,nopSignalHandler); // Prevent termination on USER1 signals
 
 	struct kvm *kvm = vm_init(argc, argv);
 	if(kvm == NULL) {
 		return -1;
-	} 
-    return vcpu_run(kvm);
+	}
+	pthread_t vcpuThread;
+	r = pthread_create(&vcpuThread, NULL, vcpu_run, kvm);
+    assert(r == 0);
+	pthread_join(vcpuThread, &r);
+	return r;
 }
