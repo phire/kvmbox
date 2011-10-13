@@ -232,14 +232,12 @@ int main(int argc, char *argv[])
 				return -1;
 			case KVM_EXIT_MMIO:
 				mmio_handler(kvm);
-				printRegs(kvm);
 				break;
 			case KVM_EXIT_SHUTDOWN:
 				printRegs(kvm);
 				printf("Triple fault\n");
 				return -1;
 			case KVM_EXIT_FAIL_ENTRY:
-				printRegs(kvm);
 				printf("Failed to enter emulation: %x\n", kvm->run->fail_entry.hardware_entry_failure_reason);
 				return -1;
 			default:
