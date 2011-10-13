@@ -9,9 +9,14 @@
 #include <malloc.h>
 #include <assert.h>
 #include <stdint.h>
-
+#include <signal.h>
 
 /* callback definitions as shown in Listing 2 go here */
+
+void nopSignalHandler() {
+	// We don't actually need to do anything here, but we need to interrupt
+	// the execution of the guest.
+}
 
 void load_file(void *mem, const char *filename)
 {
@@ -130,6 +135,9 @@ void io_handler(struct kvm *kvm) {
 
 int main(int argc, char *argv[])
 {
+
+	signal(SIGUSR1,nopSignalHandler); // Prevent termination on USER1 signals
+
 	struct kvm *kvm = malloc(sizeof(struct kvm));
 
 	int fd, r;
@@ -233,6 +241,9 @@ int main(int argc, char *argv[])
 			case KVM_EXIT_MMIO:
 				mmio_handler(kvm);
 				break;
+			case KVM_EXIT_INTR:
+				printf("Interrupt\n");
+				return 0;
 			case KVM_EXIT_SHUTDOWN:
 				printRegs(kvm);
 				printf("Triple fault\n");
