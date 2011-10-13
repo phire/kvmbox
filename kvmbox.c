@@ -170,6 +170,14 @@ int main(int argc, char *argv[])
 	}
 	kvm->run = (struct kvm_run*) map;
 
+	// Give intel it's TSS space, I think this address is unused.
+    r = ioctl(kvm->vm_fd, KVM_SET_TSS_ADDR, 0x0f000000);
+    if (r == -1) {
+        fprintf(stderr, "Error assigning TSS space: %m\n");
+        return -1;
+    }
+
+
 	kvm->ram = memalign(0x00400000, 0x04000000); // 64mb of 4mb aligned memory
 	struct kvm_userspace_memory_region memory = {
 		.memory_size = 0x04000000,
