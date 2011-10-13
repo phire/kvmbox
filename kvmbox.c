@@ -187,28 +187,24 @@ int vcpu_run(struct kvm *kvm) {
 	}
 }
 
-int main(int argc, char *argv[])
-{
-
-	signal(SIGUSR1,nopSignalHandler); // Prevent termination on USER1 signals
-
+struct kvm *vm_init(int argc, char *argv[]) {
 	struct kvm *kvm = malloc(sizeof(struct kvm));
 
 	int fd, r;
 	fd = open("/dev/kvm", O_RDWR);
 	if (fd == -1) {
 		perror("open /dev/kvm");
-		return -1;
+		return NULL;
 	}
 	kvm->fd = fd;
 
 	r = ioctl(kvm->fd, KVM_GET_API_VERSION, 0);
-	printf("api version is %i\n", r);
+	assert(r == 12);
 
 	fd = ioctl(kvm->fd, KVM_CREATE_VM, 0);
 	if (fd == -1) {
 		fprintf(stderr, "kvm_create_vm: %m\n");
-		return -1;
+		return NULL;
 	}
 	kvm->vm_fd = fd;
 	
@@ -216,7 +212,7 @@ int main(int argc, char *argv[])
     r = ioctl(kvm->vm_fd, KVM_SET_TSS_ADDR, 0x0f000000);
     if (r == -1) {
         fprintf(stderr, "Error assigning TSS space: %m\n");
-        return -1;
+        return NULL;
     }
 
 
@@ -232,7 +228,7 @@ int main(int argc, char *argv[])
 	r = ioctl(kvm->vm_fd, KVM_SET_USER_MEMORY_REGION, &memory);
 	if (r == -1) {
 		fprintf(stderr, "create_userspace_phys_mem: %i\n", r);
-		return -1;
+		return NULL;
 	}
 
 	load_file(kvm->ram + 0x000f0000, "loader");
@@ -251,7 +247,7 @@ int main(int argc, char *argv[])
 	r = ioctl(kvm->vm_fd, KVM_SET_USER_MEMORY_REGION, &rom);
 	if (r == -1) {
 		fprintf(stderr, "create_userspace_phys_mem: %i\n", r);
-		return -1;
+		return NULL;
 	}
 
 	load_file(kvm->rom, argv[2]);
@@ -262,7 +258,16 @@ int main(int argc, char *argv[])
 	((unsigned char*)kvm->ram)[0x6ba] = 0x90;
 	((unsigned char*)kvm->ram)[0x6bb] = 0x90;
 
+	return kvm;
+}
 
-	printf("VM Setup done\n");
+int main(int argc, char *argv[])
+{
+	signal(SIGUSR1,nopSignalHandler); // Prevent termination on USER1 signals
+
+	struct kvm *kvm = vm_init(argc, argv);
+	if(kvm == NULL) {
+		return -1;
+	} 
     return vcpu_run(kvm);
 }
