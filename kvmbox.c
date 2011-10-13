@@ -133,6 +133,60 @@ void io_handler(struct kvm *kvm) {
 	//sleep(1);
 }
 
+int vcpu_run(struct kvm *kvm) {
+	int r;
+
+	r = ioctl(kvm->vm_fd, KVM_CREATE_VCPU, 0);
+	if (r == -1) {
+		fprintf(stderr, "kvm_create_vcpu: %m\n");
+		return -1;
+	}
+	kvm->vcpu_fd = r;
+	
+	long mmap_size = ioctl(kvm->fd, KVM_GET_VCPU_MMAP_SIZE, 0);
+	if (mmap_size == -1) {
+		fprintf(stderr, "get vcpu mmap size: %m\n");
+		return -1;
+	}
+	void *map = mmap(NULL, mmap_size, PROT_READ|PROT_WRITE, MAP_SHARED,
+			      kvm->vcpu_fd, 0);
+	if (map == MAP_FAILED) {
+		fprintf(stderr, "mmap vcpu area: %m\n");
+		return -1;
+	}
+	kvm->run = (struct kvm_run*) map;
+
+	while (1) {
+		ioctl(kvm->vcpu_fd, KVM_RUN, 0);
+		switch(kvm->run->exit_reason){
+			case KVM_EXIT_IO:
+				io_handler(kvm);
+				break;
+			case KVM_EXIT_HLT:
+				printf("halted\n");
+				printRegs(kvm);
+				return -1;
+			case KVM_EXIT_MMIO:
+				mmio_handler(kvm);
+				break;
+			case KVM_EXIT_INTR:
+				printf("Interrupt\n");
+				return 0;
+			case KVM_EXIT_SHUTDOWN:
+				printRegs(kvm);
+				printf("Triple fault\n");
+				return -1;
+			case KVM_EXIT_FAIL_ENTRY:
+				printf("Failed to enter emulation: %x\n", kvm->run->fail_entry.hardware_entry_failure_reason);
+				return -1;
+			default:
+				printf("unhandled exit reason: %i\n", kvm->run->exit_reason);
+				printRegs(kvm);
+				return -1;
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -158,26 +212,6 @@ int main(int argc, char *argv[])
 	}
 	kvm->vm_fd = fd;
 	
-	r = ioctl(kvm->vm_fd, KVM_CREATE_VCPU, 0);
-	if (r == -1) {
-		fprintf(stderr, "kvm_create_vcpu: %m\n");
-		return -1;
-	}
-	kvm->vcpu_fd = r;
-	
-	long mmap_size = ioctl(kvm->fd, KVM_GET_VCPU_MMAP_SIZE, 0);
-	if (mmap_size == -1) {
-		fprintf(stderr, "get vcpu mmap size: %m\n");
-		return -1;
-	}
-	void *map = mmap(NULL, mmap_size, PROT_READ|PROT_WRITE, MAP_SHARED,
-			      kvm->vcpu_fd, 0);
-	if (map == MAP_FAILED) {
-		fprintf(stderr, "mmap vcpu area: %m\n");
-		return -1;
-	}
-	kvm->run = (struct kvm_run*) map;
-
 	// Give intel it's TSS space, I think this address is unused.
     r = ioctl(kvm->vm_fd, KVM_SET_TSS_ADDR, 0x0f000000);
     if (r == -1) {
@@ -228,36 +262,7 @@ int main(int argc, char *argv[])
 	((unsigned char*)kvm->ram)[0x6ba] = 0x90;
 	((unsigned char*)kvm->ram)[0x6bb] = 0x90;
 
-	while (1) {
-		ioctl(kvm->vcpu_fd, KVM_RUN, 0);
-		switch(kvm->run->exit_reason){
-			case KVM_EXIT_IO:
-				io_handler(kvm);
-				break;
-			case KVM_EXIT_HLT:
-				printf("halted\n");
-				printRegs(kvm);
-				return -1;
-			case KVM_EXIT_MMIO:
-				mmio_handler(kvm);
-				break;
-			case KVM_EXIT_INTR:
-				printf("Interrupt\n");
-				return 0;
-			case KVM_EXIT_SHUTDOWN:
-				printRegs(kvm);
-				printf("Triple fault\n");
-				return -1;
-			case KVM_EXIT_FAIL_ENTRY:
-				printf("Failed to enter emulation: %x\n", kvm->run->fail_entry.hardware_entry_failure_reason);
-				return -1;
-			default:
-				printf("unhandled exit reason: %i\n", kvm->run->exit_reason);
-				printRegs(kvm);
-				return -1;
-		}
-	}
 
-	printf("Done\n");
-    return 0;
+	printf("VM Setup done\n");
+    return vcpu_run(kvm);
 }
