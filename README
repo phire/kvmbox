@@ -1,0 +1,55 @@
+KVMBOX
+======
+
+kvmbox is an expermental low level Xbox emulator that uses the kvm
+interface in recent linux kernels for fast visulation of the x86
+processor.
+
+It's been 10 years since the Xbox was orignally released and
+6 years since it was obsoleted by next generation consoles but
+still the progress with xbox emulators has been less than
+impressive.
+
+I'm not going to claim that people currently working on Xbox 
+emulators are useless, but I though I would give it a try myself.
+
+Current Status
+--------------
+
+Right now it can jump into an unencrypted 2bl image from a v1.6
+Xbox, decrypt the kernel and start executing it before falling into
+an infintite loop due to lack of interrupts, but I did cheatt a 
+little and patch out one of the functions in 2bl.
+
+Frequently Asked Questions
+--------------------------
+
+**Can it play Random Xbox Game?**  
+No, this emulator is nowhere near a state where it could even think
+of playing any games.
+
+**So I will be able to play Xbox games on my computer?**  
+Who knows. Right now my goals are expermenting with the kvm interface,
+seeing if it's possible to emulate the graphics card at such a low 
+level and having fun. If I happen to make a functional emulator in the
+progress, then so be it.  
+But honestly, I would be supprised if it ever got to that stage.
+
+**Why are you doing lle, wouldn't hle be much faster/easier/better?**  
+Possibly. But both of the attempts I've seen so far have been hle and
+neither of them got very far. I though I'd try something diffrent and
+I'm reasonbly sure that modern computers are now fast enough to do lle. 
+
+**Will it work on windows?**  
+At the moment, no. But I guess it could be ported in the future if it
+ever makes any progress.
+
+**Can you release compiled binaries?**
+I don't really see the point, Unless you plan on modifying the emulator
+there isn't much point in downloading it.
+
+**Are you still working on this?**  
+It's hard to answer this question in advance, but if you take a look
+at when I made the latest commit to github, maybe you can answer this
+question yourself.  
+Or I might just be taking a long break.
