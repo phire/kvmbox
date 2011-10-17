@@ -9,9 +9,6 @@ INCLUDEPATH += .
 
 # Input
 
-HEADERS += kvmbox.h
-SOURCES += gui.cpp kvmbox.c pci.c smbus.c
+HEADERS += kvmbox.h kvmbox.hh
+SOURCES += gui.cpp kvmbox.cpp pci.c smbus.c
 
-nogui {
-    SOURCES = main.c kvmbox.c pci.c smbus.c
-}

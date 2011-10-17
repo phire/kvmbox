@@ -1,3 +1,4 @@
+#include <QtCore>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -12,6 +13,7 @@
 #include <stropts.h>
 
 #include "kvmbox.h"
+#include "kvmbox.hh"
 
 /* callback definitions as shown in Listing 2 go here */
 
@@ -75,8 +77,10 @@ void mmio_handler(struct kvm *kvm) {
 	}
 }
 
+extern "C" {
 void smbusIO(uint16_t, uint8_t, uint8_t, uint8_t*);
 void pciConfigIO(uint16_t, uint8_t, uint8_t, uint8_t*);
+}
 
 void io_handler(struct kvm *kvm) {
 	unsigned char *p = (unsigned char *)(kvm->run) + kvm->run->io.data_offset;
@@ -117,62 +121,76 @@ void io_handler(struct kvm *kvm) {
 	//sleep(1);
 }
 
-int vcpu_run(struct kvm *kvm) {
-	int r;
+Vcpu::Vcpu(struct kvm *kvm) {
+	this->kvm = kvm;
+}
 
-	r = ioctl(kvm->vm_fd, KVM_CREATE_VCPU, 0);
-	if (r == -1) {
-		fprintf(stderr, "kvm_create_vcpu: %m\n");
-		return -1;
-	}
-	kvm->vcpu_fd = r;
+void Vcpu::init() {
+		int r;
+
+		r = ioctl(this->kvm->vm_fd, KVM_CREATE_VCPU, 0);
+		if (r == -1) {
+			fprintf(stderr, "kvm_create_vcpu: %m\n");
+			return;
+		}
+		this->kvm->vcpu_fd = r;
 	
-	long mmap_size = ioctl(kvm->fd, KVM_GET_VCPU_MMAP_SIZE, 0);
-	if (mmap_size == -1) {
-		fprintf(stderr, "get vcpu mmap size: %m\n");
-		return -1;
-	}
-	void *map = mmap(NULL, mmap_size, PROT_READ|PROT_WRITE, MAP_SHARED,
-			      kvm->vcpu_fd, 0);
-	if (map == MAP_FAILED) {
-		fprintf(stderr, "mmap vcpu area: %m\n");
-		return -1;
-	}
-	kvm->run = (struct kvm_run*) map;
+		long mmap_size = ioctl(kvm->fd, KVM_GET_VCPU_MMAP_SIZE, 0);
+		if (mmap_size == -1) {
+			fprintf(stderr, "get vcpu mmap size: %m\n");
+			return;
+		}
+		void *map = mmap(NULL, mmap_size, PROT_READ|PROT_WRITE, MAP_SHARED,
+				      kvm->vcpu_fd, 0);
+		if (map == MAP_FAILED) {
+			fprintf(stderr, "mmap vcpu area: %m\n");
+			return;
+		}
+		this->kvm->run = (struct kvm_run*) map;
 
-	while (1) {
-		ioctl(kvm->vcpu_fd, KVM_RUN, 0);
-		switch(kvm->run->exit_reason){
+		this->threadId = QThread::currentThreadId();
+
+		emit initialised();
+}
+
+void Vcpu::run() {
+		ioctl(this->kvm->vcpu_fd, KVM_RUN, 0);
+		switch(this->kvm->run->exit_reason){
 			case KVM_EXIT_IO:
-				io_handler(kvm);
+				io_handler(this->kvm);
 				break;
 			case KVM_EXIT_HLT:
 				debugf("halted\n");
-				printRegs(kvm);
-				return -1;
+				printRegs(this->kvm);
+				emit failure();
+				return;
 			case KVM_EXIT_MMIO:
-				mmio_handler(kvm);
+				mmio_handler(this->kvm);
 				break;
 			case KVM_EXIT_INTR:
 				debugf("Interrupt\n");
-				return 0;
+				emit failure();
+				return;
 			case KVM_EXIT_SHUTDOWN:
-				printRegs(kvm);
+				printRegs(this->kvm);
 				debugf("Triple fault\n");
-				return -1;
+				emit failure();
+				return;
 			case KVM_EXIT_FAIL_ENTRY:
-				debugf("Failed to enter emulation: %llx\n", kvm->run->fail_entry.hardware_entry_failure_reason);
-				return -1;
+				debugf("Failed to enter emulation: %llx\n", this->kvm->run->fail_entry.hardware_entry_failure_reason);
+				emit failure();
+				return;
 			default:
-				debugf("unhandled exit reason: %i\n", kvm->run->exit_reason);
-				printRegs(kvm);
-				return -1;
+				debugf("unhandled exit reason: %i\n", this->kvm->run->exit_reason);
+				printRegs(this->kvm);
+				emit failure();
+				return;
 		}
-	}
+		emit exit();
 }
 
 struct kvm *vm_init(int argc, char *argv[]) {
-	struct kvm *kvm = malloc(sizeof(struct kvm));
+	struct kvm *kvm = (struct kvm *) malloc(sizeof(struct kvm));
 
 	int fd, r;
 	fd = open("/dev/kvm", O_RDWR);
@@ -201,14 +219,8 @@ struct kvm *vm_init(int argc, char *argv[]) {
 
 
 	kvm->ram = memalign(0x00400000, 0x04000000); // 64mb of 4mb aligned memory
-	struct kvm_userspace_memory_region memory = {
-		.memory_size = 0x04000000,
-		.guest_phys_addr = 0x0,
-		.userspace_addr = (unsigned long) kvm->ram,
-		.flags = 0,
-		.slot = 0,
-	};
-	
+	struct kvm_userspace_memory_region memory = {0, 0, 0x0, 0x04000000, (unsigned long) kvm->ram};
+
 	r = ioctl(kvm->vm_fd, KVM_SET_USER_MEMORY_REGION, &memory);
 	if (r == -1) {
 		fprintf(stderr, "create_userspace_phys_mem: %i\n", r);
@@ -220,14 +232,8 @@ struct kvm *vm_init(int argc, char *argv[]) {
 
 	kvm->rom = memalign(0x00100000, 0x00100000); //1mb of 1mb aligned
 
-	struct kvm_userspace_memory_region rom = {
-		.memory_size = 0x00100000,
-		.guest_phys_addr = 0xfff00000,
-		.userspace_addr = (unsigned long) kvm->rom,
-		.flags = 0,
-		.slot = 1,
-	};
-	
+	struct kvm_userspace_memory_region rom = {1, 0, 0xfff00000, 0x00100000, (unsigned long) kvm->rom};
+
 	r = ioctl(kvm->vm_fd, KVM_SET_USER_MEMORY_REGION, &rom);
 	if (r == -1) {
 		fprintf(stderr, "create_userspace_phys_mem: %i\n", r);
@@ -236,6 +242,7 @@ struct kvm *vm_init(int argc, char *argv[]) {
 
 	load_file(kvm->rom, argv[2]);
 
+	// Patch out an annoying function call
 	((unsigned char*)kvm->ram)[0x6b7] = 0x90;
 	((unsigned char*)kvm->ram)[0x6b8] = 0x90;
 	((unsigned char*)kvm->ram)[0x6b9] = 0x90;

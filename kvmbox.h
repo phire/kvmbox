@@ -16,6 +16,8 @@ struct kvm {
 int vcpu_run(struct kvm *kvm);
 struct kvm *vm_init(int argc, char *argv[]);
 
+void debugf(const char *format, ...);
+
 #ifdef __cplusplus
 }
 #endif
