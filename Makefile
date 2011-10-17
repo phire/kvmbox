@@ -3,8 +3,8 @@ LIBS = -lpthread
 
 all: kvmbox loader
 
-kvmbox: kvmbox.o smbus.o pci.o
-	gcc $(CFLAGS) $(LIBS) kvmbox.o smbus.o pci.o -o kvmbox
+kvmbox: main.c kvmbox.o smbus.o pci.o
+	gcc $(CFLAGS) $(LIBS) main.c kvmbox.o smbus.o pci.o -o kvmbox
 
 loader: loader.asm
 	nasm loader.asm

@@ -9,16 +9,11 @@
 #include <malloc.h>
 #include <assert.h>
 #include <stdint.h>
-#include <signal.h>
 #include <stropts.h>
-#include <pthread.h>
+
+#include "kvmbox.h"
 
 /* callback definitions as shown in Listing 2 go here */
-
-void nopSignalHandler() {
-	// We don't actually need to do anything here, but we need to interrupt
-	// the execution of the guest.
-}
 
 void load_file(void *mem, const char *filename)
 {
@@ -40,15 +35,6 @@ void load_file(void *mem, const char *filename)
     }
     close(fd);
 }
-
-struct kvm {
-	int fd;
-	int vm_fd;
-	int vcpu_fd;
-	struct kvm_run *run;
-	void *ram;
-	void *rom;
-};
 
 void printRegs(struct kvm *kvm) {
 	struct kvm_regs regs;
@@ -257,20 +243,4 @@ struct kvm *vm_init(int argc, char *argv[]) {
 	((unsigned char*)kvm->ram)[0x6bb] = 0x90;
 
 	return kvm;
-}
-
-int main(int argc, char *argv[])
-{
-	int r;
-	signal(SIGUSR1,nopSignalHandler); // Prevent termination on USER1 signals
-
-	struct kvm *kvm = vm_init(argc, argv);
-	if(kvm == NULL) {
-		return -1;
-	}
-	pthread_t vcpuThread;
-	r = pthread_create(&vcpuThread, NULL, vcpu_run, kvm);
-    assert(r == 0);
-	pthread_join(vcpuThread, &r);
-	return r;
 }
