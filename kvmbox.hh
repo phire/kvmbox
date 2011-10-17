@@ -3,11 +3,11 @@
 class Vcpu : public QObject {
 	Q_OBJECT
 	struct kvm *kvm;
+	long unsigned int threadId; // not portable
 
 public:
-	// Not portable
-	long unsigned int threadId;
 	Vcpu(struct kvm *kvm);
+	void interrupt();
 
 public slots:
 	void init();

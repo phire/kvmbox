@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stropts.h>
+#include <signal.h>
 
 #include "kvmbox.h"
 #include "kvmbox.hh"
@@ -127,7 +128,7 @@ Vcpu::Vcpu(struct kvm *kvm) {
 
 void Vcpu::init() {
 		int r;
-
+ 
 		r = ioctl(this->kvm->vm_fd, KVM_CREATE_VCPU, 0);
 		if (r == -1) {
 			fprintf(stderr, "kvm_create_vcpu: %m\n");
@@ -189,7 +190,21 @@ void Vcpu::run() {
 		emit exit();
 }
 
+// Interrupt kvm so that Qt's event loop regains execution.
+void Vcpu::interrupt() {
+	// Qthreads doesn't provide this for us, so we use pthreads instead.
+	// It's not portable, but then again, neither is this kvm interface
+	// which requires this.
+	pthread_kill((pthread_t)this->threadId, 10);
+}
+
+extern "C" void nopSignalHandler(int a) {
+	// We don't actually need to do anything here, but we need to interrupt
+	// the execution of the guest.
+}
+
 struct kvm *vm_init(int argc, char *argv[]) {
+	signal(SIGUSR1,nopSignalHandler);
 	struct kvm *kvm = (struct kvm *) malloc(sizeof(struct kvm));
 
 	int fd, r;

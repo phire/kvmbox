@@ -1,7 +1,6 @@
 #include <QtGui>
 #include <cstdio>
 #include <cstdarg>
-#include <signal.h>
 #include "kvmbox.h"
 #include "kvmbox.hh"
 
@@ -14,14 +13,7 @@ extern "C" void debugf(const char *format, ...) {
 	va_end(args);
 }
 
-extern "C" void nopSignalHandler(int a) {
-	// We don't actually need to do anything here, but we need to interrupt
-	// the execution of the guest.
-}
-
 int main(int argv, char **args) {
-	signal(SIGUSR1,nopSignalHandler);
-
 	QApplication app(argv, args);
 
 	textEdit = new QTextEdit;
@@ -52,7 +44,7 @@ int main(int argv, char **args) {
 	vcpuThread->start();
 
 	int ret = app.exec();
-	pthread_kill((pthread_t )vcpu->threadId, 10);
+	vcpu->interrupt();
 	vcpuThread->quit();
 	vcpuThread->wait();
 	return ret;
