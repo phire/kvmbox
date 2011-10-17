@@ -225,7 +225,7 @@ struct pci_config *getConfig() {
 uint32_t readConfig(reg) {
 	struct pci_config *config = getConfig();
 	if (!config) {
-		printf("Unimplemented PCI device read %i:%i:%i[0x%02x]\n", bus, device, function, reg);
+		debugf("Unimplemented PCI device read %i:%i:%i[0x%02x]\n", bus, device, function, reg);
 		return 0;
 	}
 	return ((uint32_t *)config)[reg];
@@ -234,7 +234,7 @@ uint32_t readConfig(reg) {
 void writeConfig(reg, value) {
 	struct pci_config *config = getConfig();
 	if (!config) {
-		printf("Unimplemented PCI device write %i:%i:%i[0x%02x] = %08x\n", bus, device, function, reg, value);
+		debugf("Unimplemented PCI device write %i:%i:%i[0x%02x] = %08x\n", bus, device, function, reg, value);
 		return;
 	}
 	((uint32_t *)config)[reg] = value;

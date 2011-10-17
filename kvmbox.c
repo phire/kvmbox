@@ -42,36 +42,36 @@ void printRegs(struct kvm *kvm) {
 	int r = ioctl(kvm->vcpu_fd, KVM_GET_REGS, &regs);
 	int s = ioctl(kvm->vcpu_fd, KVM_GET_SREGS, &sregs);
 	if (r == -1 || s == -1) {
-		printf("Get Regs failed");
+		fprintf(stderr, "Get Regs failed");
 		return;
 	}
-	printf("rax: 0x%08llx\n", regs.rax);
-	printf("rbx: 0x%08llx\n", regs.rbx);
-	printf("rcx: 0x%08llx\n", regs.rcx);
-	printf("rdx: 0x%08llx\n", regs.rdx);
-	printf("rsi: 0x%08llx\n", regs.rsi);
-	printf("rdi: 0x%08llx\n", regs.rdi);
-	printf("rsp: 0x%08llx\n", regs.rsp);
-	printf("rbp: 0x%08llx\n", regs.rbp);
-	printf("rip: 0x%08llx\n", regs.rip);
-	printf("=====================\n");
-	printf("cr0: 0x%016llx\n", sregs.cr0);
-	printf("cr2: 0x%016llx\n", sregs.cr2);
-	printf("cr3: 0x%016llx\n", sregs.cr3);
-	printf("cr4: 0x%016llx\n", sregs.cr4);
-	printf("cr8: 0x%016llx\n", sregs.cr8);
-	printf("gdt: 0x%04x:0x%08llx\n", sregs.gdt.limit, sregs.gdt.base);
-	printf("cs: 0x%08llx ds: 0x%08llx es: 0x%08llx\nfs: 0x%08llx gs: 0x%08llx ss: 0x%08llx\n",
+	debugf("rax: 0x%08llx\n", regs.rax);
+	debugf("rbx: 0x%08llx\n", regs.rbx);
+	debugf("rcx: 0x%08llx\n", regs.rcx);
+	debugf("rdx: 0x%08llx\n", regs.rdx);
+	debugf("rsi: 0x%08llx\n", regs.rsi);
+	debugf("rdi: 0x%08llx\n", regs.rdi);
+	debugf("rsp: 0x%08llx\n", regs.rsp);
+	debugf("rbp: 0x%08llx\n", regs.rbp);
+	debugf("rip: 0x%08llx\n", regs.rip);
+	debugf("=====================\n");
+	debugf("cr0: 0x%016llx\n", sregs.cr0);
+	debugf("cr2: 0x%016llx\n", sregs.cr2);
+	debugf("cr3: 0x%016llx\n", sregs.cr3);
+	debugf("cr4: 0x%016llx\n", sregs.cr4);
+	debugf("cr8: 0x%016llx\n", sregs.cr8);
+	debugf("gdt: 0x%04x:0x%08llx\n", sregs.gdt.limit, sregs.gdt.base);
+	debugf("cs: 0x%08llx ds: 0x%08llx es: 0x%08llx\nfs: 0x%08llx gs: 0x%08llx ss: 0x%08llx\n",
 			 sregs.cs.base, sregs.ds.base, sregs.es.base, sregs.fs.base, sregs.gs.base, sregs.ss.base);
 }
 
 void mmio_handler(struct kvm *kvm) {
 	uint32_t addr = kvm->run->mmio.phys_addr;
 	if(kvm->run->mmio.is_write) {
-		printf("Write %i to 0x%08x\n", kvm->run->mmio.len, addr);
-		printf("0x%08x\n",*(unsigned int*)(kvm->run->mmio.data));
+		debugf("Write %i to 0x%08x\n", kvm->run->mmio.len, addr);
+		debugf("0x%08x\n",*(unsigned int*)(kvm->run->mmio.data));
 	} else {
-		printf("Read %i from 0x%08x\n", kvm->run->mmio.len, addr);
+		debugf("Read %i from 0x%08x\n", kvm->run->mmio.len, addr);
 	}
 }
 
@@ -87,30 +87,30 @@ void io_handler(struct kvm *kvm) {
 	else if(port == 0xcf8 || port == 0xcfc) 
 		pciConfigIO(port, kvm->run->io.direction, kvm->run->io.size, p);
 	else if(kvm->run->io.direction) {
-		printf("I/O port 0x%04x out ", kvm->run->io.port);
+		debugf("I/O port 0x%04x out ", kvm->run->io.port);
 		switch(kvm->run->io.size) {
 			case 1:
-				printf("0x%02hhx\n", *(unsigned char*)p);
+				debugf("0x%02hhx\n", *(unsigned char*)p);
 				break;
 			case 2: 
-				printf("0x%04hx\n", *(unsigned short*)p);
+				debugf("0x%04hx\n", *(unsigned short*)p);
 				break;
 			case 4:
-				printf("0x%08x\n", *(unsigned int*)p);
+				debugf("0x%08x\n", *(unsigned int*)p);
 
 		}
 	} else {
- 		printf("I/O 0x%04x in ", kvm->run->io.port);
+ 		debugf("I/O 0x%04x in ", kvm->run->io.port);
 		//*p = 0x20;
 		switch(kvm->run->io.size) {
 			case 1:
-				printf("byte\n");
+				debugf("byte\n");
 				break;
 			case 2: 
-				printf("short\n");
+				debugf("short\n");
 				break;
 			case 4:
-				printf("int\n");
+				debugf("int\n");
 
 		}
 	}
@@ -147,24 +147,24 @@ int vcpu_run(struct kvm *kvm) {
 				io_handler(kvm);
 				break;
 			case KVM_EXIT_HLT:
-				printf("halted\n");
+				debugf("halted\n");
 				printRegs(kvm);
 				return -1;
 			case KVM_EXIT_MMIO:
 				mmio_handler(kvm);
 				break;
 			case KVM_EXIT_INTR:
-				printf("Interrupt\n");
+				debugf("Interrupt\n");
 				return 0;
 			case KVM_EXIT_SHUTDOWN:
 				printRegs(kvm);
-				printf("Triple fault\n");
+				debugf("Triple fault\n");
 				return -1;
 			case KVM_EXIT_FAIL_ENTRY:
-				printf("Failed to enter emulation: %llx\n", kvm->run->fail_entry.hardware_entry_failure_reason);
+				debugf("Failed to enter emulation: %llx\n", kvm->run->fail_entry.hardware_entry_failure_reason);
 				return -1;
 			default:
-				printf("unhandled exit reason: %i\n", kvm->run->exit_reason);
+				debugf("unhandled exit reason: %i\n", kvm->run->exit_reason);
 				printRegs(kvm);
 				return -1;
 		}

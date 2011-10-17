@@ -6,7 +6,7 @@
 
 
 uint16_t eepromRead(uint8_t addr) {
-	printf("Eeprom read 0x%02x\n", addr);
+	debugf("Eeprom read 0x%02x\n", addr);
 	return 0;
 }
 
@@ -24,7 +24,7 @@ uint16_t picRead(uint8_t cmd) {
 	case 0x1f:
 		return 0xef;
 	default:
-		printf("PIC: unimplemented read: 0x%02x\n", cmd);
+		debugf("PIC: unimplemented read: 0x%02x\n", cmd);
 		return 0;
 	}
 }
@@ -34,10 +34,10 @@ void picWrite(uint8_t cmd, uint16_t data) {
 	case 0x20:
 		return;
 	case 0x21:
-		printf("PIC: Loader is authenticated, we won't reset the cpu ;D\n");
+		debugf("PIC: Loader is authenticated, we won't reset the cpu ;D\n");
 		return;
 	default:
-		printf("PIC: unimplemented write: 0x%02x\n", cmd);
+		debugf("PIC: unimplemented write: 0x%02x\n", cmd);
 	}
 }
 
@@ -76,18 +76,18 @@ void smbusIO(uint16_t port, uint8_t direction, uint8_t size, uint8_t *p) {
 			default:
 				if((address & 1) == 0) { // Write
 					if(*p == 0xa) {
-						printf("SMBus: Write %02x:%02x = 0x%02x\n", address>>1, command, data);
+						debugf("SMBus: Write %02x:%02x = 0x%02x\n", address>>1, command, data);
 					}
 					else if(*p == 0xb) {
-						printf("SMBus: Write %02x:%02x = 0x%04x\n", address>>1, command, data);
+						debugf("SMBus: Write %02x:%02x = 0x%04x\n", address>>1, command, data);
 					} else printf("SMBus: Unsupport opperation");
 				} else {
-					printf("SMBus: Read %02x:%02x\n", address>>1, command);
+					debugf("SMBus: Read %02x:%02x\n", address>>1, command);
 				}
 			} 
 			break;
 		default:
-			printf("smbus: unhandled out port 0x%04x\n", port);
+			debugf("smbus: unhandled out port 0x%04x\n", port);
 		}
 		break;
 	case 0: // in
@@ -100,7 +100,7 @@ void smbusIO(uint16_t port, uint8_t direction, uint8_t size, uint8_t *p) {
 			else *(uint16_t*)p = data;
 			break;
 		default:
-			printf("smbus: unhandled port in 0x%04x\n", port);
+			debugf("smbus: unhandled port in 0x%04x\n", port);
 		}
 	}
 }

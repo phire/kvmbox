@@ -2,7 +2,16 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <pthread.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include "kvmbox.h"
+
+void debugf(char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	vprintf(format, args);
+	va_end(args);
+} 
 
 void nopSignalHandler() {
 	// We don't actually need to do anything here, but we need to interrupt
