@@ -1,9 +1,21 @@
 #include <QtGui>
+#include <cstdio>
+#include <cstdarg>
+
+QTextEdit *textEdit;
+
+extern "C" void debugf(char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	vprintf(format, args);
+	va_end(args);
+}
 
 int main(int argv, char **args) {
 	QApplication app(argv, args);
 
-	QTextEdit *textEdit = new QTextEdit;
+	textEdit = new QTextEdit;
+	textEdit->setReadOnly(TRUE);
 	QPushButton *quitButton = new QPushButton("Quit");
 
 	QObject::connect(quitButton, SIGNAL(clicked()), qApp, SLOT(quit()));
