@@ -1,3 +1,7 @@
+// Copyright (c) 2011 Scott Mansell <phiren@gmail.com>
+// Licensed under the MIT license
+// Refer to the included LICENCE file.
+
 #include <stdint.h>
 #include <stdio.h>
 
